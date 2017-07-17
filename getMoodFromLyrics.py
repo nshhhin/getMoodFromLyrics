@@ -44,14 +44,22 @@ def getLyrics():
 				song_dict.update({song_title:song_url})
 			except: 
 				pass
-				"      "
 
 	# 辞書型のsong_dictを返す
 	return song_dict
 
-g_songDict = getLyrics()
-print(g_songDict["青春のすべて"])
-#g_songDict.has_key("青春のすべて")
+
+if __name__ == '__main__':
+
+	# 曲をランキングから取得してきてその歌詞を保存する
+
+	#g_songDict = getLyrics() #曲名と歌詞があるリンク先を取得してくる
+	#for _dict in g_songDict:
+	#	print( _dict ) #曲名
+	#	print( g_songDict[_dict] ) #URL
+
+	# 保存したデータから印象分析をする
+
 
 """
 # wikiから持ってくるバージョン
