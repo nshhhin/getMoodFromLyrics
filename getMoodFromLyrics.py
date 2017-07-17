@@ -12,35 +12,46 @@ import re #正規表現ライブラリ
 
 #url = 'https://www5.atwiki.jp/hmiku/pages/249.html'
 
+g_maxIndex = 2
+g_songDict = {}
 
-for i in range(1,2):
+def getLyrics():
 
-	url = "http://utaten.com/lyricPvRanking/index?page="+str(i)
+	for i in range(1,g_maxIndex):
 
-	# スクレイピングできないページもあるので，FireFoxでアクセスする 
+		url = "http://utaten.com/lyricPvRanking/index?page="+str(i)
 
-	req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-	response = urlopen(req)
-	html = response.read()
-	soup = BeautifulSoup(html, "lxml")
+		# スクレイピングできないページもあるので，FireFoxでアクセスする 
 
-	# {曲名:歌詞が載っているURL}の辞書song_dictを作る
-	song_dict =  {}
+		req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+		response = urlopen(req)
+		html = response.read()
+		soup = BeautifulSoup(html, "lxml")
 
-	for h3 in soup.find_all("h3"):
-		#print(h3.a.get_text())
-		try:
-			text = h3.a.get_text()
-			split_text = text.split("        ")
-			song_title = split_text[1]
-			song_url = "http://utaten.com" + h3.a.get("href")
-			song_dict.update({song_title, song_url})
+		# {曲名:歌詞が載っているURL}の辞書song_dictを作る
+		song_dict =  {}
 
-		except:
-			#なんもしない
-			print(sys.exc_info())
+		for h3 in soup.find_all("h3"):
+			#print(h3.a.get_text())
+			try:
+				text = h3.a.get_text()
+				# 余分な空白を取り除く
+				split_text = text.split("        ")
+				song_title = split_text[1]
+				song_title = song_title[0:len(song_title)-6]
+				print(song_title)
+				song_url = "http://utaten.com" + h3.a.get("href")
+				song_dict.update({song_title:song_url})
+			except: 
+				pass
+				"      "
 
+	# 辞書型のsong_dictを返す
+	return song_dict
 
+g_songDict = getLyrics()
+print(g_songDict["青春のすべて"])
+#g_songDict.has_key("青春のすべて")
 
 """
 # wikiから持ってくるバージョン
