@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup #スクレイピング用のライブラリ
 import urllib.request
 from urllib.request import Request, urlopen
 import sys
+import pandas as pd
 
 import re #正規表現ライブラリ
  
@@ -17,29 +18,33 @@ g_songDict = {}
 
 class Song:
 	# 曲情報を持つクラス
+	m_name = ""
+	m_url = ""
+	m_mood = ""
+	m_lyric = ""
 
-	def __init__(self, name, url, mood, lyric):
+	def __init__(self, name, url):
 		self.m_name = name # 曲名
 		self.m_url = url # 歌詞のURL
-		self.m_mood = mood # 印象 yujo/kando/rennai/gennki
-		self.m_lyric = lyric # 歌詞
 
 	# 歌詞のURLから歌詞を取ってくる
-	def getLyric(self):
+	def setLyric(self):
 		req = Request(self.m_url, headers={'User-Agent': 'Mozilla/5.0'})
 		response = urlopen(req)
 		html = response.read()
-		soup = BeautifulSoup(html, "lxml")
-		orgLyrics = soup.find("div", class_="medium")
+		self.soup = BeautifulSoup(html, "lxml")
+		orgLyrics = self.soup.find("div", class_="medium")
 		# ルビの記述は余計なので除去する
 		subLyrics = re.sub('<span class="rt">(.*?)</span>', "", str(orgLyrics))
+		subLyrics = re.sub('          ',"",str(subLyrics))
 		soup2 = BeautifulSoup(subLyrics, "lxml")
 		self.m_lyric = soup2.get_text()
 
+	def setMood(self):
 		# 最も投票されている印象を取得する
 		moods_list = {"yujo","kando","rennai","gennki"}
 		for mood in moods_list:
-			className = soup.find("button", class_="voteBtn mostVoted " + mood + "Btn")
+			className = self.soup.find("button", class_="voteBtn mostVoted " + mood + "Btn")
 			if( className != None ):
 				self.m_mood = mood
 
@@ -50,9 +55,17 @@ class Song:
 		print("印象:" + self.m_mood)
 		print("歌詞:" + self.m_lyric)
 
+	def save(self):
+		df = pd.DataFrame(
+			[[self.m_name, self.m_url, self.m_mood, self.m_lyric]],
+			columns = ['title', 'url', 'mood','lyric']
+			)
+		df.to_csv('songs/' + self.m_name +'.csv')
 
 
-def getSongDict():
+
+
+def getSongFromRanking():
 
 	for i in range(1, g_maxIndex):
 
@@ -79,9 +92,11 @@ def getSongDict():
 				
 				# print(song_title)
 				song_url = "http://utaten.com" + h3.a.get("href")
-				song = Song(song_title, song_url, "yujo", "I have a pen")
+				song = Song(song_title, song_url)
+				song.setLyric()
+				song.setMood()
 				song.showInfo()
-				song.getLyric()
+				song.save()
 				song_dict.update({song_title:song})
 
 			except: 
@@ -94,20 +109,17 @@ def getSongDict():
 def main():
 	# 曲をランキングから取得してきてその歌詞を保存する
 
-	#g_songDict = getLyrics() #曲名と歌詞があるリンク先を取得してくる
-	#for _dict in g_songDict:
-	#	print( _dict ) #曲名
-	#	print( g_songDict[_dict] ) #URL
+	#g_songDict = getSongFromRanking()
 
-	# 保存したデータから印象分析をする
-
-	
-	"""
 	#単一の曲を取得するサンプル
-	song = Song("JAM LADY","http://utaten.com/lyric/%E9%96%A2%E3%82%B8%E3%83%A3%E3%83%8B%E2%88%9E/JAM+LADY/#sort=popular_sort_asc","gennki","")
-	song.getLyric()
+	
+	song = Song("JAM LADY","http://utaten.com/lyric/%E9%96%A2%E3%82%B8%E3%83%A3%E3%83%8B%E2%88%9E/JAM+LADY/#sort=popular_sort_asc")
+	song.setLyric()
+	song.setMood()
 	song.showInfo()
-	"""
+	song.save()
+	
+
 
 	"""
 	# wikiから持ってくるバージョン
