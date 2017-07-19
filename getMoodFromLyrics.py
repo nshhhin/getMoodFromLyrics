@@ -2,7 +2,7 @@
 # implemented by nino
 # 歌詞をまとめているwikiにアクセスし,スクレイピングする
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup #スクレイピング用のライブラリ
 import urllib.request
 from urllib.request import Request, urlopen
 import sys
@@ -26,23 +26,23 @@ class Song:
 
 	# 歌詞のURLから歌詞を取ってくる
 	def getLyric(self):
-		# スクレイピングできないページもあるので，FireFoxでアクセスする 
 		req = Request(self.m_url, headers={'User-Agent': 'Mozilla/5.0'})
 		response = urlopen(req)
 		html = response.read()
 		soup = BeautifulSoup(html, "lxml")
-		orgLyrics = soup.find_all("div", class_="medium")
+		orgLyrics = soup.find("div", class_="medium")
+		# ルビの記述は余計なので除去する
+		subLyrics = re.sub('<span class="rt">(.*?)</span>', "", str(orgLyrics))
+		soup2 = BeautifulSoup(subLyrics, "lxml")
+		self.m_lyric = soup2.get_text()
 
 		# 最も投票されている印象を取得する
 		moods_list = {"yujo","kando","rennai","gennki"}
-		for i in range(0,len(moods_list)):
-			className = soup.find_all("button", class_="voteBtn voted " + moods_list[i])
-			if( className != null ):
-				mood = mood_list[i]
+		for mood in moods_list:
+			className = soup.find("button", class_="voteBtn mostVoted " + mood + "Btn")
+			if( className != None ):
+				self.m_mood = mood
 
-		# ルビの記述は余計なので除去する
-		# <span class="rt">まいばん</span>
-		print(orgLyrics)
 
 	def showInfo(self):
 		print("曲名:" + self.m_name)
@@ -52,7 +52,7 @@ class Song:
 
 
 
-def getLyrics():
+def getSongDict():
 
 	for i in range(1, g_maxIndex):
 
@@ -90,7 +90,8 @@ def getLyrics():
 	# 辞書型のsong_dictを返す
 	return song_dict
 
-if __name__ == '__main__':
+
+def main():
 	# 曲をランキングから取得してきてその歌詞を保存する
 
 	#g_songDict = getLyrics() #曲名と歌詞があるリンク先を取得してくる
@@ -100,8 +101,13 @@ if __name__ == '__main__':
 
 	# 保存したデータから印象分析をする
 
+	
+	"""
+	#単一の曲を取得するサンプル
 	song = Song("JAM LADY","http://utaten.com/lyric/%E9%96%A2%E3%82%B8%E3%83%A3%E3%83%8B%E2%88%9E/JAM+LADY/#sort=popular_sort_asc","gennki","")
 	song.getLyric()
+	song.showInfo()
+	"""
 
 	"""
 	# wikiから持ってくるバージョン
@@ -116,3 +122,7 @@ if __name__ == '__main__':
 	print(song_dict["結晶"])
 
 	"""
+
+if __name__ == '__main__':
+	main()
+	
