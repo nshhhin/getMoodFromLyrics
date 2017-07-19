@@ -1,6 +1,6 @@
-# getLyrics2.py
-# implemented by nino
-# 歌詞をまとめているwikiにアクセスし,スクレイピングする
+# getMoodFromLyrics.py
+# by nino
+# ある楽曲の歌詞をスクレイピングしてきて，その曲の印象を予測するプログラム
 
 from bs4 import BeautifulSoup #スクレイピング用のライブラリ
 import urllib.request
