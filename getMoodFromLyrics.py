@@ -158,7 +158,8 @@ def getSongFromRanking():
 						yujo_count = yujo_count + 1
 						song.saveCSV()
 						song_dict.update({song_title:song})
-					else:
+					
+					if(  gennki_count == 50 and rennai_count == 50 and kando_count == 50 and yujo_count == 50):
 						# 全部カウントされなくなったら
 						g_bCompleted = True
 
@@ -324,7 +325,7 @@ def main():
 		elif song.m_mood == "kando":
 			kando_count = kando_count + 1
 			labels.append(2)
-		elif ong.m_mood == "yujo":
+		elif song.m_mood == "yujo":
 			yujo_count = yujo_count + 1
 			labels.append(3)
 
