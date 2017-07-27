@@ -22,7 +22,11 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn import svm, naive_bayes
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import grid_search
+from sklearn.svm import SVC
 
+from sklearn.cross_validation import cross_val_score
+
+from sklearn.metrics import make_scorer, f1_score, precision_score, recall_score
 
 g_maxIndex = 10 # 持ってくるページ数
 g_maxNumOfSongs = 50 # それぞれの印象に対して持ってくる楽曲数
@@ -88,12 +92,12 @@ class Song:
 		print("歌詞:" + self.m_lyric)
 
 	# 曲情報をCSVとして保存するメソッド
-	def saveCSV(self):
+	def saveCSV(self,name):
 		df = pd.DataFrame(
 			[[self.m_name, self.m_url, self.m_mood, self.m_lyric]],
 			columns = ['title', 'url', 'mood','lyric']
 			)
-		df.to_csv('songs2/' + self.m_name +'.csv')
+		df.to_csv(name)
 
 	# 曲情報をが書かれたCSVを読み込むメソッド
 	def loadCSV(self, fileName):
@@ -141,22 +145,25 @@ def getSongFromRanking():
 				song.setInfo()
 				print(song.m_name)
 
+
+
 				if( song.m_bExist ):
+					filename = "songs3/" + song.m_mood + "/" + song.m_name + ".csv"
 					if( song.m_mood == "gennki" and gennki_count < 50 ):
 						gennki_count = gennki_count + 1
-						song.saveCSV()
+						song.saveCSV(filename)
 						song_dict.update({song_title:song})
 					elif( song.m_mood == "rennai" and rennai_count < 50 ):
 						rennai_count = rennai_count + 1
-						song.saveCSV()
+						song.saveCSV(filename)
 						song_dict.update({song_title:song})
 					elif( song.m_mood == "kando" and kando_count < 50 ):
 						kando_count = kando_count + 1
-						song.saveCSV()
+						song.saveCSV(filename)
 						song_dict.update({song_title:song})
 					elif( song.m_mood == "yujo" and yujo_count < 50 ):
 						yujo_count = yujo_count + 1
-						song.saveCSV()
+						song.saveCSV(filename)
 						song_dict.update({song_title:song})
 					
 					if(  gennki_count == 50 and rennai_count == 50 and kando_count == 50 and yujo_count == 50):
@@ -243,7 +250,8 @@ def cross_validate(n_folds, feature_vectors, labels, shuffle_order, method='SVM'
     result_test_num = []
     result_correct_num = []
     
-    print( "おおおおおおお" )
+    print( "range")
+    print( range(len(labels)) )
     print( len(labels) )
     n_splits = N_splitter( range(len(labels)), n_folds )
 
@@ -272,104 +280,131 @@ def cross_validate(n_folds, feature_vectors, labels, shuffle_order, method='SVM'
     
     return result_test_num, result_correct_num
 
+
+""" メイン関数 """
+# ランキングやURLから楽曲の情報を取得し，
+# 歌詞情報をもとにした印象予測のための学習機を作る．
+# 5-クロスバリデーションを使い学習機を評価する
+# Utatenにある楽曲のURLを入力するとその楽曲を
+# 4クラスタのうちどれかに分類することもできる
 def main():
 
+	DATA_NUM = 50
+
 	# 曲をランキングから取得してきてその歌詞を保存する
-	# (何度もやってると怒られそうなので、必要な時しかしないでください)
-	g_songDict = getSongFromRanking()
+	# (何度もやってると怒られそうなので、必要な時にしかしない)
+	# g_songDict = getSongFromRanking()
 
-	#単一の曲を取得するサンプル
-	# song = Song("","")
-	# song.loadCSV("songs/恋の魔法.csv")
+	# 単一の曲を取得する
+	# song = Song("出会いは成長の種","http://utaten.com/lyric/%E3%82%B1%E3%83%84%E3%83%A1%E3%82%A4%E3%82%B7/%E5%87%BA%E4%BC%9A%E3%81%84%E3%81%AF%E6%88%90%E9%95%B7%E3%81%AE%E7%A8%AE/#sort=popular_sort_asc")
+	# song.setInfo()
+	# song.saveCSV("songs3/" + song.m_mood + "/" + song.m_name + ".csv")
 	
+
 	mecab = MeCab.Tagger("-Ochasen") # MeCabオブジェクトを生成
-
-	"""
-		parse = mecab.parseToNode( song.m_lyric )
-		
-		words = []
-		while parse:
-			print( parse.surface )
-			words.append( parse.surface )
-			parse = parse.next
-		
-		wordsCount_dict = word_counter( words )
-
-		unigram = []
-
-		print(wordsCount_dict)
-	"""
-
-	#songsディレクトリに保存したファイル全てを読み込む
-	songsPath = glob.glob("songs2/*")
 
 	gennki_count = 0
 	rennai_count = 0
 	kando_count = 0
 	yujo_count = 0
 
-	result = []
+	moods_list = {"gennki","rennai","kando","yujo"}
+	
 	labels = []
+	unigrams_data = []
 
-	for songPath in songsPath:
-		song = Song("","")
-		song.loadCSV(songPath)
-		song.showInfo()
+	for mood in moods_list:
+		result = []
+
+		#songsディレクトリに保存したファイル全てを読み込む
+		songsPath = glob.glob("songs3/"+mood+"/*")
 		
-		if song.m_mood == "gennki":
-			gennki_count = gennki_count + 1
-			labels.append(0)
-		elif song.m_mood == "rennai":
-			rennai_count = rennai_count + 1
-			labels.append(1)
-		elif song.m_mood == "kando":
-			kando_count = kando_count + 1
-			labels.append(2)
-		elif song.m_mood == "yujo":
-			yujo_count = yujo_count + 1
-			labels.append(3)
+		for songPath in songsPath:
+			
+			song = Song("","")
+			song.loadCSV(songPath)
+			print(song.m_name)
+			
+			if song.m_mood == "gennki":
+				gennki_count = gennki_count + 1
+				labels.append(0)
+			elif song.m_mood == "rennai":
+				rennai_count = rennai_count + 1
+				labels.append(1)
+			elif song.m_mood == "kando":
+				kando_count = kando_count + 1
+				labels.append(2)
+			elif song.m_mood == "yujo":
+				yujo_count = yujo_count + 1
+				labels.append(3)
 
+			parse = mecab.parseToNode( song.m_lyric )
+			words = []
+			while parse:
+				#print( parse.surface )
+				words.append( parse.surface )
+				parse = parse.next
 
-		parse = mecab.parseToNode( song.m_lyric )
-		words = []
-		while parse:
-			print( parse.surface )
-			words.append( parse.surface )
-			parse = parse.next
+			wordsCount_dict = word_counter( words )
 
-		wordsCount_dict = word_counter( words )
+			result.append( wordsCount_dict )
+		unigrams_data = unigrams_data + result
 
-		result.append( wordsCount_dict )
-
-	"""
+	
 	vec = DictVectorizer()
-	feature_vectors_csr = vec.fit_transform( result )
-	print( feature_vectors_csr )
+	print( len(unigrams_data) )
+	print( len(labels) )
+	print( type(unigrams_data) )
+	feature_vectors_csr = vec.fit_transform( unigrams_data )
+	
 
-	one_third_size = int(len(songsPath)/3)
+	one_third_size = int((50*len(moods_list)/3))
 
 	np.random.seed(7789)
-	shuffle_order = np.random.choice( len(songsPath), len(songsPath), replace=False )
+	shuffle_order = np.random.choice( 50*len(moods_list), 50*len(moods_list), replace=False )
 
 	search_parameters = [
     	{'kernel': ['rbf'], 'gamma': [1e-2, 1e-3, 1e-4], 'C': [0.1, 1, 10, 100, 1000]},
     	{'kernel': ['linear'], 'C': [0.1, 1, 10, 100, 1000]}
 	]
 
+	print("特徴量の型")
+	feature_vectors_csr = feature_vectors_csr.toarray()
+	print( len(feature_vectors_csr[0]) )
+
+	scorer = make_scorer(f1_score, pos_label = 0) #元気
+
+
+	clf = SVC(random_state = 1)
+	scores = cross_val_score(
+		estimator = clf,
+		X = feature_vectors_csr,
+		y = labels,
+		cv = 5,
+		scoring = scorer,
+		n_jobs = -1)
+
+	print( scores )
+
+	
+	'''
+	print(labels)
 	model = svm.SVC()
 	clf = grid_search.GridSearchCV(model, search_parameters)
 	clf.fit( feature_vectors_csr, labels ) 
+
 
 	N_FOLDS = 3
 	ans, corr = cross_validate(N_FOLDS, feature_vectors_csr, labels, shuffle_order, method='SVM', parameters=clf.best_params_)
 
 	print( "average precision : ", np.around( 100.*sum(corr)/sum(ans), decimals=1 ), "%" )
-	"""
+	
 
 	print("元気" + str(gennki_count))
 	print("恋愛" + str(rennai_count))
 	print("感動" + str(kando_count))
 	print("友情" + str(yujo_count))
+	'''
 
 	"""
 	song = Song("I'll''Bee there","http://utaten.com/lyric/sumika/Summer+Vacation/#sort=popular_sort_asc")
@@ -389,7 +424,6 @@ def main():
 
 	print(song_dict["結晶"]
 	"""
-
 
 
 if __name__ == '__main__':
